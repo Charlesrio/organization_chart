@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrgFlow Pro — Organization Chart Creator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+[data-theme="dark"] {
+  --bg:#0d0f14;--surface:#161a24;--surface2:#1e2334;--surface3:#252b3d;
+  --border:#2a3048;--accent:#e8b86d;--accent2:#6d9ee8;--accent3:#8de8b8;
+  --text:#eef0f6;--text2:#8a93b0;--text3:#4e5874;--danger:#e86d6d;
+  --shadow:0 8px 32px rgba(0,0,0,0.45);--shadow-lg:0 20px 60px rgba(0,0,0,0.6);
+  --dot:#2a3048;--conn:#2a3048;
+}
+[data-theme="light"] {
+  --bg:#f0f2f8;--surface:#ffffff;--surface2:#f4f6fc;--surface3:#e8ecf5;
+  --border:#d0d6ec;--accent:#b8791a;--accent2:#2a6bd4;--accent3:#178f5e;
+  --text:#1a1f33;--text2:#58628a;--text3:#9aa2c0;--danger:#c43030;
+  --shadow:0 4px 20px rgba(0,0,0,0.08);--shadow-lg:0 12px 40px rgba(0,0,0,0.13);
+  --dot:#d0d6ec;--conn:#b8c2de;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;gap:10px;flex-wrap:wrap;transition:background .3s,border-color .3s;}
+.logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);letter-spacing:-.5px;white-space:nowrap;display:flex;align-items:center;gap:7px;}
+.logo-badge{font-family:'DM Sans',sans-serif;font-size:9.5px;font-weight:700;background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:2px 7px;border-radius:20px;}
+.header-left{display:flex;align-items:center;gap:10px;}
+.header-actions{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.undo-group{display:flex;gap:2px;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .17s ease;white-space:nowrap;user-select:none;}
+.btn:disabled{opacity:.32;cursor:not-allowed;pointer-events:none;}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text2);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);border-color:var(--accent);}
+.btn-accent{background:var(--accent);color:#fff;font-weight:600;border-color:var(--accent);}
+[data-theme="dark"] .btn-accent{color:#0d0f14;}
+.btn-accent:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-outline{background:transparent;border-color:var(--accent);color:var(--accent);}
+.btn-outline:hover{background:rgba(232,184,109,.1);}
+.btn-icon{padding:6px 8px;}
+.btn svg{width:13px;height:13px;flex-shrink:0;}
+
+/* SEARCH */
+.search-wrap{position:relative;display:flex;align-items:center;}
+.search-wrap svg{position:absolute;left:8px;width:12px;height:12px;color:var(--text3);pointer-events:none;}
+#searchInput{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px 6px 26px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text);outline:none;width:170px;transition:border-color .15s,width .2s;}
+#searchInput:focus{border-color:var(--accent);width:210px;}
+#searchInput::placeholder{color:var(--text3);}
+
+/* THEME TOGGLE */
+.theme-row{display:flex;align-items:center;gap:5px;font-size:13px;}
+.theme-toggle{width:44px;height:24px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;cursor:pointer;position:relative;transition:background .3s;flex-shrink:0;}
+.theme-toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--accent);transition:transform .25s ease;}
+[data-theme="light"] .theme-toggle::after{transform:translateX(20px);}
+
+/* CHART TITLE BAR */
+.chart-titlebar{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 20px;display:flex;align-items:center;gap:12px;transition:background .3s,border-color .3s;}
+#chartTitle{font-family:'DM Serif Display',serif;font-size:17px;color:var(--text);background:transparent;border:none;outline:none;flex:1;min-width:0;}
+#chartTitle::placeholder{color:var(--text3);}
+#chartDesc{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text2);background:transparent;border:none;outline:none;width:280px;}
+#chartDesc::placeholder{color:var(--text3);}
+.titlebar-sep{width:1px;height:20px;background:var(--border);}
+
+/* LAYOUT */
+.app-layout{display:flex;height:calc(100vh - 88px);}
+
+/* SIDEBAR */
+.sidebar{width:268px;min-width:240px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;transition:width .3s,min-width .3s;}
+.sidebar.collapsed{width:0;min-width:0;overflow:hidden;}
+.sidebar-section{padding:14px 13px 8px;}
+.sidebar-title{font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text3);margin-bottom:9px;}
+
+/* STATS */
+.stats-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.stat-item{flex:1;padding:10px 6px;text-align:center;border-right:1px solid var(--border);}
+.stat-item:last-child{border-right:none;}
+.stat-val{font-family:'DM Serif Display',serif;font-size:22px;color:var(--accent);line-height:1;}
+.stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+
+/* NODE SIZE PICKER */
+.size-row{display:flex;gap:4px;margin-bottom:10px;}
+.size-btn{flex:1;padding:5px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:10.5px;color:var(--text2);cursor:pointer;text-align:center;transition:all .14s;}
+.size-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,184,109,.09);}
+
+/* CONNECTOR COLOR */
+.conn-color-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.conn-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .14s,border-color .14s;flex-shrink:0;}
+.conn-swatch:hover{transform:scale(1.18);}
+.conn-swatch.active{border-color:var(--text);transform:scale(1.12);}
+
+/* QUICK ADD */
+.node-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.node-type-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;font-size:11px;color:var(--text2);transition:all .14s;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.node-type-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,184,109,.07);}
+.node-type-btn .ni{font-size:16px;}
+
+/* DEPT BADGES */
+.dept-summary{display:flex;flex-direction:column;gap:4px;}
+.dept-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--surface2);border-radius:7px;font-size:11.5px;}
+.dept-name{color:var(--text2);font-weight:500;}
+.dept-count{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center;}
+
+/* FORMS */
+.form-group{margin-bottom:9px;}
+.form-group label{display:block;font-size:10.5px;color:var(--text2);margin-bottom:4px;font-weight:500;}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--text);outline:none;transition:border-color .15s;resize:vertical;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);}
+.form-group select option{background:var(--surface2);color:var(--text);}
+.form-group textarea{min-height:60px;font-size:12px;}
+.color-row{display:flex;gap:5px;flex-wrap:wrap;}
+.color-swatch{width:23px;height:23px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s,border-color .15s;flex-shrink:0;}
+.color-swatch:hover{transform:scale(1.2);}
+.color-swatch.active{border-color:var(--text);transform:scale(1.15);}
+.divider{height:1px;background:var(--border);margin:3px 0 12px;}
+
+/* AVATAR UPLOAD */
+.avatar-upload-wrap{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.avatar-preview{width:52px;height:52px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;overflow:hidden;flex-shrink:0;transition:border-color .15s;}
+.avatar-preview:hover{border-color:var(--accent);}
+.avatar-preview img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.avatar-info{font-size:10.5px;color:var(--text2);line-height:1.7;}
+.avatar-info b{color:var(--text);}
+
+/* CSV PREVIEW */
+.csv-preview-wrap{border:1px solid var(--border);border-radius:7px;overflow:auto;max-height:180px;margin-top:8px;}
+.csv-preview-wrap table{width:100%;border-collapse:collapse;font-size:11px;}
+.csv-preview-wrap th{background:var(--surface2);padding:5px 8px;text-align:left;font-size:10px;color:var(--text2);border-bottom:1px solid var(--border);}
+.csv-preview-wrap td{padding:4px 8px;color:var(--text2);border-bottom:1px solid var(--border);}
+.csv-preview-wrap tr:last-child td{border-bottom:none;}
+
+/* SHARE LINK */
+.share-link-row{display:flex;gap:7px;margin-top:8px;}
+.share-link-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:monospace;font-size:11px;color:var(--text2);outline:none;}
+
+/* CANVAS */
+.canvas-wrap{flex:1;overflow:hidden;position:relative;background:var(--bg);background-image:radial-gradient(circle at 1px 1px,var(--dot) 1px,transparent 0);background-size:27px 27px;transition:background .3s;}
+.canvas-inner{position:absolute;inset:0;overflow:auto;}
+#orgChart{min-width:900px;min-height:600px;padding:46px;position:relative;transform-origin:top left;}
+
+/* CANVAS TOOLBAR */
+.canvas-toolbar{position:absolute;top:10px;left:10px;display:flex;gap:4px;z-index:10;flex-wrap:wrap;}
+
+/* BULK SELECTION BAR */
+.bulk-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--surface);border:1.5px solid var(--accent);border-radius:10px;padding:7px 14px;display:none;align-items:center;gap:8px;z-index:20;box-shadow:var(--shadow-lg);animation:slideDown .18s ease;}
+.bulk-bar.visible{display:flex;}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-8px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+.bulk-count{font-size:12px;font-weight:700;color:var(--accent);}
+
+/* ZOOM */
+.map-controls{position:absolute;bottom:16px;right:16px;display:flex;flex-direction:column;gap:3px;z-index:10;}
+.map-btn{width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);font-size:16px;transition:all .14s;user-select:none;}
+.map-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--accent);}
+#zoomLabel{font-size:9.5px;font-weight:700;}
+
+/* TREE — VERTICAL */
+.tree{display:flex;flex-direction:column;align-items:center;}
+.tree-node-wrap{display:flex;flex-direction:column;align-items:center;position:relative;}
+.connector-down{width:2px;background:var(--conn);height:28px;flex-shrink:0;transition:background .3s;}
+.children-row{display:flex;gap:20px;align-items:flex-start;justify-content:center;position:relative;}
+.children-row::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--conn);}
+.child-col{display:flex;flex-direction:column;align-items:center;}
+.child-col::before{content:'';display:block;width:2px;height:28px;background:var(--conn);}
+
+/* TREE — HORIZONTAL */
+.h-node-wrap{display:flex;flex-direction:row;align-items:center;}
+.h-connector-right{height:2px;background:var(--conn);width:28px;flex-shrink:0;}
+.h-children-col{display:flex;flex-direction:column;gap:20px;position:relative;}
+.h-children-col::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--conn);}
+.h-child-row{display:flex;flex-direction:row;align-items:center;position:relative;}
+.h-child-row::before{content:'';display:block;width:28px;height:2px;background:var(--conn);flex-shrink:0;}
+
+/* CURVED SVG OVERLAY */
+.svg-connector-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+
+/* SIBLING DROP ZONES */
+.sibling-dropzone{width:8px;min-height:80px;background:transparent;border-radius:3px;transition:all .15s;flex-shrink:0;cursor:col-resize;position:relative;}
+.sibling-dropzone.drag-over{background:rgba(109,158,232,.35);width:6px;}
+.sibling-dropzone::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:60%;background:var(--accent2);opacity:0;border-radius:1px;transition:opacity .15s;}
+.sibling-dropzone.drag-over::after{opacity:1;}
+
+/* NODE CARD */
+.node-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;position:relative;box-shadow:var(--shadow);user-select:none;text-align:center;transition:border-color .18s,box-shadow .18s,opacity .18s;}
+.node-card.sz-compact{padding:9px 12px;min-width:130px;max-width:165px;}
+.node-card.sz-normal{padding:13px 15px;min-width:158px;max-width:195px;}
+.node-card.sz-detailed{padding:15px 17px;min-width:178px;max-width:215px;}
+
+/* Card entrance animation */
+.node-card{animation:cardPop .22s cubic-bezier(.34,1.56,.64,1);}
+@keyframes cardPop{from{transform:scale(.88);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+/* Compact hides extra fields */
+.node-card.sz-compact .node-title,
+.node-card.sz-compact .node-dept-badge,
+.node-card.sz-compact .node-email{display:none;}
+.node-card.sz-compact .node-avatar{width:34px;height:34px;font-size:13px;margin-bottom:5px;}
+.node-card.sz-compact .node-name{font-size:11.5px;}
+
+/* Detailed shows more */
+.node-card.sz-detailed .node-avatar{width:50px;height:50px;font-size:18px;}
+
+.node-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.node-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,109,.22),var(--shadow);}
+.node-card.multi-sel{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(109,158,232,.25);}
+.node-card.dimmed{opacity:.25;pointer-events:none;}
+.node-card.drag-over-reparent{border-color:var(--accent2)!important;box-shadow:0 0 0 3px rgba(109,158,232,.28)!important;}
+.node-card.is-dragging{opacity:.35;transform:scale(.95);}
+
+.node-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;margin:0 auto 7px;font-weight:700;font-family:'DM Serif Display',serif;flex-shrink:0;overflow:hidden;transition:transform .18s;}
+.node-card:hover .node-avatar{transform:scale(1.07);}
+.node-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.node-name{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.3;}
+.node-title{font-size:10px;color:var(--text2);margin-top:2px;line-height:1.4;}
+.node-dept-badge{font-size:9px;margin-top:4px;padding:2px 8px;border-radius:20px;display:inline-block;font-weight:600;}
+.node-email{font-size:9px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
+.node-notes-icon{position:absolute;top:6px;left:7px;font-size:10px;opacity:.5;pointer-events:none;}
+.node-count-badge{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;padding:1px 6px;border-radius:7px;background:var(--surface);border:1px solid var(--border);color:var(--text2);white-space:nowrap;}
+.collapse-btn{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);width:18px;height:18px;background:var(--surface);border:1.5px solid var(--border);border-radius:50%;display:none;align-items:center;justify-content:center;font-size:8.5px;cursor:pointer;color:var(--text2);transition:all .13s;z-index:2;user-select:none;}
+.collapse-btn:hover{background:var(--accent);color:#0d0f14;border-color:var(--accent);}
+.has-children .collapse-btn{display:flex;}
+.node-actions{position:absolute;top:-8px;right:-8px;display:none;gap:2px;}
+.node-card:hover .node-actions,.node-card.selected .node-actions{display:flex;}
+.na-btn{width:19px;height:19px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--text2);transition:all .13s;}
+.na-btn:hover{background:var(--accent);color:#0d0f14;border-color:var(--accent);}
+.na-btn.del:hover{background:var(--danger);border-color:var(--danger);color:#fff;}
+.na-btn.dup:hover{background:var(--accent3);border-color:var(--accent3);color:#0d0f14;}
+
+/* Node color themes */
+.theme-amber .node-avatar{background:rgba(232,184,109,.17);color:#e8b86d;}
+.theme-amber .node-dept-badge{background:rgba(232,184,109,.13);color:#e8b86d;}
+.theme-amber.node-card{border-top:3px solid #e8b86d;}
+.theme-blue .node-avatar{background:rgba(109,158,232,.17);color:#6d9ee8;}
+.theme-blue .node-dept-badge{background:rgba(109,158,232,.13);color:#6d9ee8;}
+.theme-blue.node-card{border-top:3px solid #6d9ee8;}
+.theme-green .node-avatar{background:rgba(141,232,184,.17);color:#8de8b8;}
+.theme-green .node-dept-badge{background:rgba(141,232,184,.13);color:#8de8b8;}
+.theme-green.node-card{border-top:3px solid #8de8b8;}
+.theme-red .node-avatar{background:rgba(232,109,109,.17);color:#e86d6d;}
+.theme-red .node-dept-badge{background:rgba(232,109,109,.13);color:#e86d6d;}
+.theme-red.node-card{border-top:3px solid #e86d6d;}
+.theme-purple .node-avatar{background:rgba(180,109,232,.17);color:#b46de8;}
+.theme-purple .node-dept-badge{background:rgba(180,109,232,.13);color:#b46de8;}
+.theme-purple.node-card{border-top:3px solid #b46de8;}
+.theme-teal .node-avatar{background:rgba(109,220,232,.17);color:#6ddce8;}
+.theme-teal .node-dept-badge{background:rgba(109,220,232,.13);color:#6ddce8;}
+.theme-teal.node-card{border-top:3px solid #6ddce8;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:24px;width:100%;max-width:440px;box-shadow:var(--shadow-lg);animation:modalIn .2s ease;max-height:90vh;overflow-y:auto;}
+.modal.wide{max-width:520px;}
+@keyframes modalIn{from{transform:translateY(14px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--accent);margin-bottom:16px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.confirm-modal{max-width:330px;text-align:center;}
+.confirm-icon{font-size:36px;margin-bottom:10px;}
+.confirm-msg{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;}
+
+/* EXPORT DROPDOWN */
+.export-wrap{position:relative;}
+.export-panel{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:7px;min-width:185px;box-shadow:var(--shadow-lg);z-index:50;flex-direction:column;gap:2px;}
+.export-panel.open{display:flex;}
+.export-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:all .12s;font-size:11.5px;color:var(--text2);border:1px solid transparent;}
+.export-item:hover{background:var(--surface2);color:var(--text);border-color:var(--border);}
+.export-badge{font-size:9px;background:var(--surface3);padding:1px 5px;border-radius:3px;margin-left:auto;color:var(--text2);font-weight:700;}
+
+/* EMPTY STATE */
+.empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;}
+.empty-icon{font-size:50px;opacity:.16;}
+.empty-state h3{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);opacity:.3;}
+.empty-state p{font-size:11.5px;text-align:center;max-width:220px;opacity:.4;line-height:1.7;color:var(--text2);}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:7px 16px;font-size:12px;color:var(--text);opacity:0;pointer-events:none;transition:all .25s;z-index:999;white-space:nowrap;box-shadow:var(--shadow);display:flex;align-items:center;gap:7px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast-icon{font-size:13px;}
+
+/* PRINT */
+@media print{
+  header,.chart-titlebar .btn,.sidebar,.map-controls,.canvas-toolbar,.node-actions,.collapse-btn,.node-count-badge,.bulk-bar{display:none!important;}
+  .app-layout{height:auto;}
+  .canvas-wrap{overflow:visible;background:white!important;background-image:none!important;}
+  .canvas-inner{position:static;overflow:visible;}
+  #orgChart{transform:none!important;min-width:0;padding:20px;}
+  body,html{background:white!important;}
+  .node-card{border:1.5px solid #bbb!important;box-shadow:none!important;background:white!important;}
+  .node-name{color:#111!important;} .node-title{color:#555!important;}
+  .chart-titlebar{display:flex!important;border-bottom:1px solid #ddd!important;background:white!important;}
+}
+
+/* RESPONSIVE */
+@media(max-width:720px){
+  .sidebar{width:100%;min-width:0;height:auto;max-height:38vh;border-right:none;border-bottom:1px solid var(--border);}
+  .sidebar.collapsed{height:0;max-height:0;overflow:hidden;}
+  .app-layout{flex-direction:column;height:auto;min-height:calc(100vh - 88px);}
+  .canvas-wrap{min-height:55vh;height:55vh;}
+  #orgChart{min-width:540px;}
+  .logo-badge,.theme-row span{display:none;}
+  #searchInput{width:120px;}
+  #chartDesc{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo">OrgFlow <span class="logo-badge">Pro</span></div>
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search nodes…" oninput="searchNodes(this.value)">
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="undo-group">
+      <button class="btn btn-ghost btn-icon" id="undoBtn" title="Undo (Ctrl+Z)" onclick="undo()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+      </button>
+      <button class="btn btn-ghost btn-icon" id="redoBtn" title="Redo (Ctrl+Y)" onclick="redo()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
+      </button>
+    </div>
+    <button class="btn btn-ghost" onclick="saveJSON()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Save
+    </button>
+    <button class="btn btn-ghost" onclick="triggerLoad()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Load
+    </button>
+    <input type="file" id="loadFile" accept=".json" style="display:none" onchange="loadJSON(event)">
+    <button class="btn btn-ghost" onclick="openCSVModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="8" y1="13" x2="16" y2="13"/></svg>CSV
+    </button>
+    <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none" onchange="handleCSVFile(event)">
+    <button class="btn btn-ghost" onclick="openShareModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share
+    </button>
+    <button class="btn btn-ghost" onclick="printChart()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print
+    </button>
+    <button class="btn btn-ghost" onclick="confirmClearAll()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Clear
+    </button>
+    <div class="export-wrap">
+      <button class="btn btn-outline" onclick="toggleExport()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export
+      </button>
+      <div class="export-panel" id="exportPanel">
+        <div class="export-item" onclick="exportAs('png')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>PNG Image<span class="export-badge">PNG</span>
+        </div>
+        <div class="export-item" onclick="exportAs('pdf')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>PDF Document<span class="export-badge">PDF</span>
+        </div>
+        <div class="export-item" onclick="exportAs('svg')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16,18 22,12 16,6"/><polyline points="8,6 2,12 8,18"/></svg>SVG Vector<span class="export-badge">SVG</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-accent" onclick="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>Add Node
+    </button>
+    <div class="theme-row">
+      <span>🌙</span>
+      <div class="theme-toggle" onclick="toggleTheme()"></div>
+      <span>☀️</span>
+    </div>
+    <button class="btn btn-ghost btn-icon" onclick="toggleSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><path d="M14 7h7M14 12h7M14 17h7"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- CHART TITLE BAR -->
+<div class="chart-titlebar">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="flex-shrink:0;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  <input id="chartTitle" placeholder="Chart title e.g. Acme Corp Org Chart" maxlength="80">
+  <div class="titlebar-sep"></div>
+  <input id="chartDesc" placeholder="Description, date, notes…" maxlength="140">
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="stats-bar">
+      <div class="stat-item"><div class="stat-val" id="stTotal">0</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-item"><div class="stat-val" id="stDepts">0</div><div class="stat-lbl">Depts</div></div>
+      <div class="stat-item"><div class="stat-val" id="stLevels">0</div><div class="stat-lbl">Levels</div></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Node Size</div>
+      <div class="size-row">
+        <div class="size-btn" id="sizeCompact" onclick="setNodeSize('compact')">Compact</div>
+        <div class="size-btn" id="sizeNormal" onclick="setNodeSize('normal')">Normal</div>
+        <div class="size-btn" id="sizeDetailed" onclick="setNodeSize('detailed')">Detailed</div>
+      </div>
+      <div class="sidebar-title" style="margin-top:6px;">Connector Color</div>
+      <div class="conn-color-row" id="connColorPicker">
+        <div class="conn-swatch active" data-color="#2a3048" style="background:#2a3048;" onclick="setConnectorColor(this,'#2a3048')" title="Default"></div>
+        <div class="conn-swatch" data-color="#e8b86d" style="background:#e8b86d;" onclick="setConnectorColor(this,'#e8b86d')" title="Amber"></div>
+        <div class="conn-swatch" data-color="#6d9ee8" style="background:#6d9ee8;" onclick="setConnectorColor(this,'#6d9ee8')" title="Blue"></div>
+        <div class="conn-swatch" data-color="#8de8b8" style="background:#8de8b8;" onclick="setConnectorColor(this,'#8de8b8')" title="Green"></div>
+        <div class="conn-swatch" data-color="#e86d6d" style="background:#e86d6d;" onclick="setConnectorColor(this,'#e86d6d')" title="Red"></div>
+        <div class="conn-swatch" data-color="#b46de8" style="background:#b46de8;" onclick="setConnectorColor(this,'#b46de8')" title="Purple"></div>
+        <div class="conn-swatch" data-color="#6ddce8" style="background:#6ddce8;" onclick="setConnectorColor(this,'#6ddce8')" title="Teal"></div>
+        <div class="conn-swatch" data-color="#ffffff" style="background:#fff;border:1px solid var(--border);" onclick="setConnectorColor(this,'#ffffff')" title="White"></div>
+      </div>
+    </div>
+
+    <div class="divider" style="margin:0 13px;"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Quick Add</div>
+      <div class="node-type-grid">
+        <div class="node-type-btn" onclick="quickAdd('ceo')"><span class="ni">👑</span>CEO</div>
+        <div class="node-type-btn" onclick="quickAdd('manager')"><span class="ni">🧑‍💼</span>Manager</div>
+        <div class="node-type-btn" onclick="quickAdd('employee')"><span class="ni">👤</span>Employee</div>
+        <div class="node-type-btn" onclick="quickAdd('team')"><span class="ni">🏢</span>Dept Head</div>
+        <div class="node-type-btn" onclick="quickAdd('designer')"><span class="ni">🎨</span>Designer</div>
+        <div class="node-type-btn" onclick="quickAdd('intern')"><span class="ni">🎓</span>Intern</div>
+      </div>
+    </div>
+
+    <div class="divider" style="margin:0 13px;"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Selected Node</div>
+      <div id="editPanel"><p style="font-size:11px;color:var(--text2);line-height:1.7;">Click any node to edit it here.</p></div>
+    </div>
+
+    <div class="divider" style="margin:0 13px;"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Dept Headcount</div>
+      <div class="dept-summary" id="deptSummary"><p style="font-size:10.5px;color:var(--text3);">No departments yet.</p></div>
+    </div>
+
+    <div style="flex:1;"></div>
+    <div class="sidebar-section" style="padding-bottom:14px;">
+      <p style="font-size:9.5px;color:var(--text3);line-height:2.1;">
+        <b style="color:var(--text2);">Keys:</b> N=new · Del=delete · F=fit · +/-=zoom<br>
+        Ctrl+Z/Y=undo/redo · Ctrl+S=save<br>
+        <b style="color:var(--text2);">Drag</b> onto card = reparent · between = reorder<br>
+        <b style="color:var(--text2);">Ctrl+click</b> = multi-select
+      </p>
+    </div>
+  </aside>
+
+  <main class="canvas-wrap" id="canvasWrap">
+    <div class="canvas-toolbar">
+      <button class="btn btn-ghost" onclick="toggleLayout()" title="Switch layout direction">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="5" height="8" rx="1"/><rect x="9" y="3" width="5" height="5" rx="1"/><rect x="9" y="11" width="5" height="5" rx="1"/></svg>
+        <span id="layoutLabel">Vertical</span>
+      </button>
+      <button class="btn btn-ghost" onclick="toggleCurves()" title="Toggle connector style">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20 C6 14 10 12 12 12 S18 4 21 4"/></svg>
+        <span id="curveLabel">Straight</span>
+      </button>
+      <button class="btn btn-ghost" onclick="fitToScreen()" title="Fit chart (F)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>Fit
+      </button>
+    </div>
+
+    <!-- BULK SELECTION BAR -->
+    <div class="bulk-bar" id="bulkBar">
+      <span class="bulk-count" id="bulkCount">0 selected</span>
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="bulkReparentModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>Move to…
+      </button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;border-color:var(--danger);color:var(--danger);" onclick="bulkDelete()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Delete all
+      </button>
+      <button class="btn btn-ghost btn-icon" style="font-size:11px;" onclick="clearMultiSel()" title="Clear selection">✕</button>
+    </div>
+
+    <div class="canvas-inner" id="canvasInner">
+      <div id="orgChart">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🏢</div>
+          <h3>Your Chart Awaits</h3>
+          <p>Click "Add Node" or use Quick Add to start building your organization chart.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-controls">
+      <div class="map-btn" onclick="zoom(.1)" title="Zoom in">+</div>
+      <div class="map-btn" id="zoomLabel" onclick="resetZoom()" title="Reset zoom">100%</div>
+      <div class="map-btn" onclick="zoom(-.1)" title="Zoom out">−</div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD/EDIT NODE MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Add Node</div>
+    <div class="avatar-upload-wrap">
+      <div class="avatar-preview" id="avatarPreview" onclick="document.getElementById('avatarFileInput').click()">📷</div>
+      <div class="avatar-info"><b>Photo</b> (optional)<br>Click to upload.<br>JPG / PNG · max 1 MB</div>
+      <input type="file" id="avatarFileInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none">
+    </div>
+    <div class="form-group"><label>Full Name *</label><input type="text" id="nodeName" placeholder="e.g. Sarah Johnson"></div>
+    <div class="form-group"><label>Job Title</label><input type="text" id="nodeTitle" placeholder="e.g. Chief Executive Officer"></div>
+    <div class="form-group"><label>Department</label><input type="text" id="nodeDept" placeholder="e.g. Engineering"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="nodeEmail" placeholder="e.g. sarah@company.com"></div>
+    <div class="form-group"><label>Notes / Bio</label><textarea id="nodeNotes" placeholder="Short bio, responsibilities, location…"></textarea></div>
+    <div class="form-group"><label>Reports To</label><select id="nodeParent"><option value="">— Root (top level) —</option></select></div>
+    <div class="form-group">
+      <label>Color Theme</label>
+      <div class="color-row" id="colorPicker">
+        <div class="color-swatch active" data-t="amber" style="background:#e8b86d;" onclick="pickColor(this)"></div>
+        <div class="color-swatch" data-t="blue" style="background:#6d9ee8;" onclick="pickColor(this)"></div>
+        <div class="color-swatch" data-t="green" style="background:#8de8b8;" onclick="pickColor(this)"></div>
+        <div class="color-swatch" data-t="red" style="background:#e86d6d;" onclick="pickColor(this)"></div>
+        <div class="color-swatch" data-t="purple" style="background:#b46de8;" onclick="pickColor(this)"></div>
+        <div class="color-swatch" data-t="teal" style="background:#6ddce8;" onclick="pickColor(this)"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveNode()">Save Node</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal confirm-modal">
+    <div class="confirm-icon" id="confirmIcon">⚠️</div>
+    <div class="modal-title" id="confirmTitle" style="text-align:center;"></div>
+    <p class="confirm-msg" id="confirmMsg"></p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn" id="confirmOkBtn" style="background:var(--danger);color:#fff;border-color:var(--danger);" onclick="executeConfirm()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK REPARENT MODAL -->
+<div class="modal-overlay" id="bulkMoveModal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-title">Move Selected Nodes</div>
+    <p style="font-size:12.5px;color:var(--text2);margin-bottom:12px;">Choose a new parent for all <span id="bulkMoveCount">0</span> selected node(s).</p>
+    <div class="form-group"><label>New Parent</label><select id="bulkParentSelect"><option value="">— Root (top level) —</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBulkMove()">Cancel</button>
+      <button class="btn btn-accent" onclick="executeBulkMove()">Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV IMPORT MODAL -->
+<div class="modal-overlay" id="csvModal">
+  <div class="modal wide">
+    <div class="modal-title">Import from CSV</div>
+    <p style="font-size:12px;color:var(--text2);line-height:1.75;margin-bottom:10px;">
+      CSV headers: <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:11px;">name, title, department, email, parent, color</code><br>
+      <b style="color:var(--text);">parent</b> = exact name of the parent node (leave blank for root nodes).
+    </p>
+    <div class="form-group">
+      <label>Paste CSV text</label>
+      <textarea id="csvTextarea" style="min-height:100px;font-family:monospace;font-size:11px;" placeholder="name,title,department,email,parent,color&#10;Alex Morgan,CEO,Executive,,&#10;Jordan Lee,VP Engineering,Engineering,,Alex Morgan,blue" oninput="previewCSV()"></textarea>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('csvFileInput').click()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload CSV file…
+    </button>
+    <div id="csvPreview"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeCSVModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="importCSV()">Import Nodes</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">Share via Link</div>
+    <p style="font-size:12px;color:var(--text2);line-height:1.75;">
+      Your entire chart is encoded into a shareable URL. Anyone with the link can open and edit it.<br>
+      <span style="color:var(--text3);font-size:11px;">⚠ Avatars are excluded to keep the URL compact. Use Save/Load JSON for full fidelity.</span>
+    </p>
+    <div class="share-link-row">
+      <input type="text" id="shareUrlInput" readonly placeholder="Generating link…">
+      <button class="btn btn-accent" onclick="copyShareLink()">Copy</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeShareModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✓</span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let nodes = [];
+let selectedNodeId = null;
+let editingNodeId = null;
+let pendingAvatar = null;
+let selectedColor = 'amber';
+let scale = 1;
+let idCounter = 1;
+let layoutMode = 'vertical';
+let curvedLines = false;
+let nodeSize = 'compact';
+let connectorColor = '#2a3048';
+let collapsedNodes = new Set();
+let searchQuery = '';
+let exportOpen = false;
+let confirmCallback = null;
+let history = [];
+let historyIdx = -1;
+let multiSelected = new Set();
+let draggedNodeId = null;
+const MAX_HISTORY = 60;
+
+// ============================================================
+// HISTORY
+// ============================================================
+function pushHistory() {
+  const snap = JSON.parse(JSON.stringify(nodes));
+  if (historyIdx < history.length - 1) history.splice(historyIdx + 1);
+  history.push(snap);
+  if (history.length > MAX_HISTORY) history.shift();
+  historyIdx = history.length - 1;
+  updateUndoRedo();
+}
+
+function undo() {
+  if (historyIdx <= 0) return;
+  historyIdx--;
+  nodes = JSON.parse(JSON.stringify(history[historyIdx]));
+  render(); updateStats(); refreshSidePanel(); updateUndoRedo();
+  showToast('Undone', '↩');
+}
+
+function redo() {
+  if (historyIdx >= history.length - 1) return;
+  historyIdx++;
+  nodes = JSON.parse(JSON.stringify(history[historyIdx]));
+  render(); updateStats(); refreshSidePanel(); updateUndoRedo();
+  showToast('Redone', '↪');
+}
+
+function updateUndoRedo() {
+  document.getElementById('undoBtn').disabled = historyIdx <= 0;
+  document.getElementById('redoBtn').disabled = historyIdx >= history.length - 1;
+}
+
+function refreshSidePanel() {
+  if (selectedNodeId && nodes.find(n => n.id === selectedNodeId)) {
+    showEditPanel(selectedNodeId);
+  } else {
+    selectedNodeId = null;
+    document.getElementById('editPanel').innerHTML = '<p style="font-size:11px;color:var(--text2);line-height:1.7;">Click any node to edit it here.</p>';
+  }
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+  const el = document.documentElement;
+  const next = el.dataset.theme === 'dark' ? 'light' : 'dark';
+  el.dataset.theme = next;
+  localStorage.setItem('of_theme', next);
+  showToast(next === 'dark' ? 'Dark mode' : 'Light mode', next === 'dark' ? '🌙' : '☀️');
+}
+
+// ============================================================
+// NODE SIZE
+// ============================================================
+function setNodeSize(sz) {
+  nodeSize = sz;
+  document.getElementById('sizeCompact').classList.toggle('active', sz === 'compact');
+  document.getElementById('sizeNormal').classList.toggle('active', sz === 'normal');
+  document.getElementById('sizeDetailed').classList.toggle('active', sz === 'detailed');
+  render();
+  showToast(sz.charAt(0).toUpperCase() + sz.slice(1) + ' view', '⊞');
+}
+
+function initSizeBtns() {
+  document.getElementById('sizeCompact').classList.toggle('active', nodeSize === 'compact');
+  document.getElementById('sizeNormal').classList.toggle('active', nodeSize === 'normal');
+  document.getElementById('sizeDetailed').classList.toggle('active', nodeSize === 'detailed');
+}
+
+// ============================================================
+// CONNECTOR COLOR
+// ============================================================
+function setConnectorColor(el, color) {
+  connectorColor = color;
+  document.querySelectorAll('.conn-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.documentElement.style.setProperty('--conn', color);
+  render();
+  showToast('Connector color updated', '🎨');
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  document.getElementById('stTotal').textContent = nodes.length;
+  const depts = new Set(nodes.map(n => n.dept).filter(Boolean));
+  document.getElementById('stDepts').textContent = depts.size;
+  function depth(id) {
+    const kids = nodes.filter(n => n.parent === id);
+    return kids.length ? 1 + Math.max(...kids.map(k => depth(k.id))) : 1;
+  }
+  const roots = nodes.filter(n => !n.parent);
+  document.getElementById('stLevels').textContent = roots.length ? Math.max(...roots.map(r => depth(r.id))) : 0;
+
+  const deptEl = document.getElementById('deptSummary');
+  if (!depts.size) { deptEl.innerHTML = '<p style="font-size:10.5px;color:var(--text3);">No departments yet.</p>'; return; }
+  const counts = {};
+  nodes.forEach(n => { if (n.dept) counts[n.dept] = (counts[n.dept] || 0) + 1; });
+  const cm = { amber:'#e8b86d', blue:'#6d9ee8', green:'#8de8b8', red:'#e86d6d', purple:'#b46de8', teal:'#6ddce8' };
+  const ck = Object.keys(cm);
+  deptEl.innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([dept, cnt], i) => {
+    const col = cm[ck[i % ck.length]];
+    return `<div class="dept-row"><span class="dept-name">${esc(dept)}</span><span class="dept-count" style="background:${col}22;color:${col};">${cnt}</span></div>`;
+  }).join('');
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const chart = document.getElementById('orgChart');
+  const empty = document.getElementById('emptyState');
+  if (!nodes.length) {
+    chart.innerHTML = '';
+    chart.appendChild(empty);
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+  chart.innerHTML = '';
+  chart.style.setProperty('--conn', connectorColor);
+
+  const roots = nodes.filter(n => !n.parent);
+  if (layoutMode === 'horizontal') renderHorizontal(chart, roots);
+  else renderVertical(chart, roots);
+
+  if (curvedLines) injectCurvedConnectors(chart);
+  setupDragAndDrop();
+}
+
+// ---- VERTICAL LAYOUT ----
+function renderVertical(chart, roots) {
+  const tree = document.createElement('div');
+  tree.className = 'tree';
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:40px;align-items:flex-start;justify-content:center;flex-wrap:wrap;';
+
+  roots.forEach((r, i) => {
+    if (i > 0) {
+      const dz = makeSiblingDropzone(roots[i-1].id, null);
+      row.appendChild(dz);
+    }
+    const subtree = buildVertical(r.id);
+    if (subtree) row.appendChild(subtree);
+  });
+
+  tree.appendChild(row);
+  chart.appendChild(tree);
+}
+
+function buildVertical(id) {
+  const node = nodes.find(n => n.id === id);
+  if (!node) return null;
+  const kids = nodes.filter(n => n.parent === id);
+  const isCollapsed = collapsedNodes.has(id);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node-wrap';
+  wrap.appendChild(makeCard(node, kids.length > 0));
+
+  if (kids.length && !isCollapsed) {
+    const down = document.createElement('div');
+    down.className = 'connector-down';
+    wrap.appendChild(down);
+
+    const childRow = document.createElement('div');
+    childRow.className = 'children-row';
+
+    kids.forEach((kid, i) => {
+      if (i > 0) {
+        const dz = makeSiblingDropzone(kids[i-1].id, id);
+        childRow.appendChild(dz);
+      }
+      const col = document.createElement('div');
+      col.className = 'child-col';
+      const sub = buildVertical(kid.id);
+      if (sub) col.appendChild(sub);
+      childRow.appendChild(col);
+    });
+
+    wrap.appendChild(childRow);
+  }
+  return wrap;
+}
+
+// ---- HORIZONTAL LAYOUT ----
+function renderHorizontal(chart, roots) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:26px;align-items:flex-start;';
+  roots.forEach(r => {
+    const sub = buildHorizontal(r.id);
+    if (sub) wrap.appendChild(sub);
+  });
+  chart.appendChild(wrap);
+}
+
+function buildHorizontal(id) {
+  const node = nodes.find(n => n.id === id);
+  if (!node) return null;
+  const kids = nodes.filter(n => n.parent === id);
+  const isCollapsed = collapsedNodes.has(id);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'h-node-wrap';
+  wrap.appendChild(makeCard(node, kids.length > 0));
+
+  if (kids.length && !isCollapsed) {
+    const conn = document.createElement('div');
+    conn.className = 'h-connector-right';
+    wrap.appendChild(conn);
+
+    const col = document.createElement('div');
+    col.className = 'h-children-col';
+    kids.forEach(kid => {
+      const row = document.createElement('div');
+      row.className = 'h-child-row';
+      const sub = buildHorizontal(kid.id);
+      if (sub) row.appendChild(sub);
+      col.appendChild(row);
+    });
+    wrap.appendChild(col);
+  }
+  return wrap;
+}
+
+// ---- CURVED CONNECTORS ----
+function injectCurvedConnectors(chart) {
+  requestAnimationFrame(() => {
+    const old = chart.querySelector('.svg-connector-layer');
+    if (old) old.remove();
+
+    const styleTag = document.getElementById('curveHideStyle') || document.createElement('style');
+    styleTag.id = 'curveHideStyle';
+    styleTag.textContent = '.connector-down,.h-connector-right{background:transparent!important;}.children-row::before,.child-col::before,.h-children-col::before,.h-child-row::before{display:none!important;}';
+    document.head.appendChild(styleTag);
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('svg-connector-layer');
+    const chartRect = chart.getBoundingClientRect();
+
+    nodes.forEach(n => {
+      if (!n.parent) return;
+      const pCard = chart.querySelector(`[data-node-id="${n.parent}"]`);
+      const cCard = chart.querySelector(`[data-node-id="${n.id}"]`);
+      if (!pCard || !cCard) return;
+
+      const pr = pCard.getBoundingClientRect();
+      const cr = cCard.getBoundingClientRect();
+      const ox = chartRect.left, oy = chartRect.top;
+
+      let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
+      if (layoutMode === 'vertical') {
+        x1 = pr.left - ox + pr.width / 2; y1 = pr.bottom - oy;
+        x2 = cr.left - ox + cr.width / 2; y2 = cr.top - oy;
+        const mid = (y1 + y2) / 2;
+        cx1 = x1; cy1 = mid; cx2 = x2; cy2 = mid;
+      } else {
+        x1 = pr.right - ox; y1 = pr.top - oy + pr.height / 2;
+        x2 = cr.left - ox; y2 = cr.top - oy + cr.height / 2;
+        const mid = (x1 + x2) / 2;
+        cx1 = mid; cy1 = y1; cx2 = mid; cy2 = y2;
+      }
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`);
+      path.setAttribute('stroke', connectorColor);
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(path);
+    });
+
+    chart.appendChild(svg);
+  });
+}
+
+// ---- SIBLING DROP ZONES ----
+function makeSiblingDropzone(afterNodeId, parentId) {
+  const dz = document.createElement('div');
+  dz.className = 'sibling-dropzone';
+  dz.dataset.afterId = afterNodeId;
+  dz.dataset.parentId = parentId === null ? '__root__' : parentId;
+
+  dz.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    dz.classList.remove('drag-over');
+    if (!draggedNodeId) return;
+    const targetParent = dz.dataset.parentId === '__root__' ? null : dz.dataset.parentId;
+    const afterId = dz.dataset.afterId;
+    const dragNode = nodes.find(n => n.id === draggedNodeId);
+    if (!dragNode || isDescendant(targetParent, draggedNodeId)) return;
+
+    pushHistory();
+    // Reorder among siblings
+    const sibs = nodes.filter(n => n.parent === targetParent && n.id !== draggedNodeId);
+    const afterIdx = sibs.findIndex(n => n.id === afterId);
+    sibs.splice(afterIdx + 1, 0, dragNode);
+    dragNode.parent = targetParent;
+
+    // Rebuild nodes array preserving order
+    const rest = nodes.filter(n => n.parent !== targetParent || n.id === draggedNodeId);
+    const seen = new Set();
+    const reordered = [];
+    [...sibs, ...rest].forEach(n => { if (!seen.has(n.id)) { seen.add(n.id); reordered.push(n); } });
+    nodes = reordered;
+
+    render(); showToast('Siblings reordered', '↔');
+  });
+  return dz;
+}
+
+// ---- MAKE CARD ----
+function makeCard(node, hasChildren) {
+  const card = document.createElement('div');
+  card.className = `node-card sz-${nodeSize} theme-${node.color}`;
+  if (hasChildren) card.classList.add('has-children');
+  card.dataset.nodeId = node.id;
+  if (node.id === selectedNodeId) card.classList.add('selected');
+  if (multiSelected.has(node.id)) card.classList.add('multi-sel');
+  if (searchQuery && !matchesSearch(node)) card.classList.add('dimmed');
+  card.setAttribute('draggable', 'true');
+
+  card.addEventListener('click', e => {
+    if (e.ctrlKey || e.metaKey) {
+      e.stopPropagation();
+      toggleMultiSelect(node.id);
+    } else {
+      e.stopPropagation();
+      clearMultiSel();
+      selectNode(node.id);
+    }
+  });
+
+  const initials = node.name.split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+  const avatarHtml = node.avatar ? `<img src="${node.avatar}" alt="">` : initials;
+  const kidCount = nodes.filter(n => n.parent === node.id).length;
+  const isCol = collapsedNodes.has(node.id);
+  const collapsedDescCount = getDescendantCount(node.id);
+
+  card.innerHTML = `
+    ${kidCount > 0 ? `<div class="node-count-badge">${isCol ? '▶ ' + collapsedDescCount + ' hidden' : kidCount + ' report' + (kidCount > 1 ? 's' : '')}</div>` : ''}
+    ${node.notes ? `<div class="node-notes-icon" title="${esc(node.notes)}">📝</div>` : ''}
+    <div class="node-avatar">${avatarHtml}</div>
+    <div class="node-name">${esc(node.name)}</div>
+    ${node.title ? `<div class="node-title">${esc(node.title)}</div>` : ''}
+    ${node.dept ? `<div class="node-dept-badge">${esc(node.dept)}</div>` : ''}
+    ${node.email ? `<div class="node-email">${esc(node.email)}</div>` : ''}
+    <div class="node-actions">
+      <div class="na-btn" title="Add child" onclick="addChildTo('${node.id}',event)">+</div>
+      <div class="na-btn dup" title="Duplicate subtree" onclick="duplicateNode('${node.id}',event)">⧉</div>
+      <div class="na-btn" title="Edit node" onclick="editNode('${node.id}',event)">✎</div>
+      <div class="na-btn del" title="Delete node" onclick="confirmDelete('${node.id}',event)">×</div>
+    </div>
+    ${hasChildren ? `<div class="collapse-btn" onclick="toggleCollapse('${node.id}',event)">${isCol ? '▶' : '▼'}</div>` : ''}
+  `;
+  return card;
+}
+
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function getDescendantCount(id) { return nodes.filter(n => n.parent === id).reduce((a, k) => a + 1 + getDescendantCount(k.id), 0); }
+
+// ============================================================
+// MULTI-SELECT
+// ============================================================
+function toggleMultiSelect(id) {
+  if (multiSelected.has(id)) multiSelected.delete(id);
+  else multiSelected.add(id);
+  render(); updateBulkBar();
+}
+
+function clearMultiSel() {
+  multiSelected.clear();
+  render(); updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const count = multiSelected.size;
+  document.getElementById('bulkCount').textContent = count + ' selected';
+  bar.classList.toggle('visible', count > 0);
+}
+
+function bulkDelete() {
+  if (!multiSelected.size) return;
+  showConfirm('🗑️', 'Delete Selected', `Delete <b>${multiSelected.size}</b> selected node(s) and all their children?`, () => {
+    pushHistory();
+    [...multiSelected].forEach(id => {
+      function getAllDesc(nid) { return [nid, ...nodes.filter(n => n.parent === nid).flatMap(k => getAllDesc(k.id))]; }
+      const toRemove = new Set(getAllDesc(id));
+      nodes = nodes.filter(n => !toRemove.has(n.id));
+    });
+    multiSelected.clear(); selectedNodeId = null;
+    render(); updateStats(); updateBulkBar();
+    showToast('Deleted', '🗑️');
+  }, 'Delete All');
+}
+
+function bulkReparentModal() {
+  if (!multiSelected.size) return;
+  const sel = document.getElementById('bulkParentSelect');
+  sel.innerHTML = '<option value="">— Root (top level) —</option>';
+  nodes.filter(n => !multiSelected.has(n.id)).forEach(n => {
+    const o = document.createElement('option');
+    o.value = n.id;
+    o.textContent = n.name + (n.title ? ' — ' + n.title : '');
+    sel.appendChild(o);
+  });
+  document.getElementById('bulkMoveCount').textContent = multiSelected.size;
+  document.getElementById('bulkMoveModal').classList.add('open');
+}
+
+function closeBulkMove() { document.getElementById('bulkMoveModal').classList.remove('open'); }
+
+function executeBulkMove() {
+  const newParent = document.getElementById('bulkParentSelect').value || null;
+  pushHistory();
+  [...multiSelected].forEach(id => {
+    const n = nodes.find(x => x.id === id);
+    if (n && !isDescendant(newParent, id)) n.parent = newParent;
+  });
+  closeBulkMove();
+  multiSelected.clear();
+  render(); updateStats(); updateBulkBar();
+  showToast('Nodes moved', '↕');
+}
+
+// ============================================================
+// DRAG & DROP (reparent)
+// ============================================================
+function setupDragAndDrop() {
+  document.querySelectorAll('.node-card').forEach(card => {
+    card.addEventListener('dragstart', function(e) {
+      draggedNodeId = this.dataset.nodeId;
+      this.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', function() {
+      this.classList.remove('is-dragging');
+      document.querySelectorAll('.drag-over-reparent').forEach(el => el.classList.remove('drag-over-reparent'));
+      draggedNodeId = null;
+    });
+    card.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (this.dataset.nodeId !== draggedNodeId) this.classList.add('drag-over-reparent');
+    });
+    card.addEventListener('dragleave', function() { this.classList.remove('drag-over-reparent'); });
+    card.addEventListener('drop', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      this.classList.remove('drag-over-reparent');
+      if (!draggedNodeId || this.dataset.nodeId === draggedNodeId) return;
+      if (isDescendant(this.dataset.nodeId, draggedNodeId)) { showToast("Can't reparent to a descendant", '⚠️'); return; }
+      pushHistory();
+      const n = nodes.find(x => x.id === draggedNodeId);
+      if (n) n.parent = this.dataset.nodeId;
+      render(); showToast('Reparented', '↕');
+    });
+  });
+}
+
+function isDescendant(targetId, ancestorId) {
+  if (!targetId) return false;
+  let cur = nodes.find(n => n.id === targetId);
+  while (cur && cur.parent) {
+    if (cur.parent === ancestorId) return true;
+    cur = nodes.find(n => n.id === cur.parent);
+  }
+  return false;
+}
+
+// ============================================================
+// COLLAPSE
+// ============================================================
+function toggleCollapse(id, e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  collapsedNodes.has(id) ? collapsedNodes.delete(id) : collapsedNodes.add(id);
+  render();
+}
+
+// ============================================================
+// DUPLICATE
+// ============================================================
+function duplicateNode(id, e) {
+  if (e) e.stopPropagation();
+  const orig = nodes.find(n => n.id === id); if (!orig) return;
+  pushHistory();
+  function cloneTree(srcId, newParentId) {
+    const src = nodes.find(n => n.id === srcId); if (!src) return;
+    const newId = 'n' + (idCounter++);
+    nodes.push({ ...JSON.parse(JSON.stringify(src)), id: newId, name: src.name + ' (copy)', parent: newParentId });
+    nodes.filter(n => n.parent === srcId).forEach(k => cloneTree(k.id, newId));
+  }
+  cloneTree(id, orig.parent);
+  render(); updateStats(); showToast('Duplicated subtree', '⧉');
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function searchNodes(q) { searchQuery = q.toLowerCase().trim(); render(); }
+function matchesSearch(n) {
+  return (n.name || '').toLowerCase().includes(searchQuery) ||
+         (n.title || '').toLowerCase().includes(searchQuery) ||
+         (n.dept || '').toLowerCase().includes(searchQuery) ||
+         (n.email || '').toLowerCase().includes(searchQuery);
+}
+
+// ============================================================
+// SELECT & INLINE EDIT PANEL
+// ============================================================
+function selectNode(id) { selectedNodeId = id; render(); showEditPanel(id); }
+
+function showEditPanel(id) {
+  const n = nodes.find(x => x.id === id); if (!n) return;
+  const col = colorHex(n.color);
+  document.getElementById('editPanel').innerHTML = `
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${col};overflow:hidden;flex-shrink:0;">
+        ${n.avatar ? `<img src="${n.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (n.name.split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase())}
+      </div>
+      <div><div style="font-weight:600;font-size:12px;">${esc(n.name)}</div><div style="font-size:10px;color:var(--text2);">${esc(n.title || '—')}</div></div>
+    </div>
+    <div class="form-group"><label>Name</label><input type="text" value="${esc(n.name)}" oninput="liveUpdate('name',this.value)"></div>
+    <div class="form-group"><label>Title</label><input type="text" value="${esc(n.title || '')}" oninput="liveUpdate('title',this.value)"></div>
+    <div class="form-group"><label>Dept</label><input type="text" value="${esc(n.dept || '')}" oninput="liveUpdate('dept',this.value)"></div>
+    <div class="form-group"><label>Color</label>
+      <div class="color-row">${['amber','blue','green','red','purple','teal'].map(c =>
+        `<div class="color-swatch${n.color === c ? ' active' : ''}" style="background:${colorHex(c)};" onclick="liveUpdate('color','${c}');document.querySelectorAll('#editPanel .color-swatch').forEach(s=>s.classList.remove('active'));this.classList.add('active')"></div>`
+      ).join('')}</div>
+    </div>
+    <div style="display:flex;gap:5px;margin-top:5px;">
+      <button class="btn btn-ghost" style="flex:1;font-size:11px;padding:5px;" onclick="editNode('${id}')">Full Edit</button>
+      <button class="btn btn-ghost" style="flex:1;font-size:11px;padding:5px;color:var(--danger);border-color:var(--danger);" onclick="confirmDelete('${id}')">Delete</button>
+    </div>`;
+}
+
+function liveUpdate(field, val) {
+  const n = nodes.find(x => x.id === selectedNodeId); if (!n) return;
+  n[field] = val; pushHistory(); render(); updateStats();
+}
+
+function colorHex(c) {
+  return { amber:'#e8b86d', blue:'#6d9ee8', green:'#8de8b8', red:'#e86d6d', purple:'#b46de8', teal:'#6ddce8' }[c] || '#e8b86d';
+}
+
+// ============================================================
+// LAYOUT TOGGLES
+// ============================================================
+function toggleLayout() {
+  layoutMode = layoutMode === 'vertical' ? 'horizontal' : 'vertical';
+  document.getElementById('layoutLabel').textContent = layoutMode === 'vertical' ? 'Vertical' : 'Horizontal';
+  render(); showToast(layoutMode === 'vertical' ? 'Vertical layout' : 'Horizontal layout', '⊞');
+}
+
+function toggleCurves() {
+  curvedLines = !curvedLines;
+  document.getElementById('curveLabel').textContent = curvedLines ? 'Curved' : 'Straight';
+  if (!curvedLines) { const s = document.getElementById('curveHideStyle'); if (s) s.remove(); }
+  render(); showToast(curvedLines ? 'Curved connectors' : 'Straight connectors', '↗');
+}
+
+// ============================================================
+// ZOOM
+// ============================================================
+function zoom(delta) { scale = Math.max(.2, Math.min(3, scale + delta)); applyZoom(); }
+function resetZoom() { scale = 1; applyZoom(); }
+function applyZoom() {
+  document.getElementById('orgChart').style.transform = `scale(${scale})`;
+  document.getElementById('zoomLabel').textContent = Math.round(scale * 100) + '%';
+}
+function fitToScreen() {
+  const wrap = document.getElementById('canvasWrap');
+  const chart = document.getElementById('orgChart');
+  chart.style.transform = 'scale(1)';
+  const ww = wrap.clientWidth - 60, wh = wrap.clientHeight - 60;
+  scale = Math.min(ww / chart.scrollWidth, wh / chart.scrollHeight, 1);
+  applyZoom();
+  document.getElementById('canvasInner').scrollTo(0, 0);
+}
+document.getElementById('canvasInner').addEventListener('wheel', e => {
+  if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoom(e.deltaY < 0 ? .1 : -.1); }
+}, { passive: false });
+document.getElementById('orgChart').addEventListener('click', () => {
+  if (selectedNodeId && !multiSelected.size) { selectedNodeId = null; render(); }
+});
+
+// ============================================================
+// ADD / EDIT MODAL
+// ============================================================
+function openAddModal(parentId = null) {
+  editingNodeId = null; pendingAvatar = null;
+  document.getElementById('modalTitle').textContent = 'Add Node';
+  ['nodeName','nodeTitle','nodeDept','nodeEmail'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nodeNotes').value = '';
+  document.getElementById('avatarPreview').innerHTML = '📷';
+  selectedColor = 'amber';
+  document.querySelectorAll('#colorPicker .color-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === 'amber'));
+  populateParentSelect(null, parentId);
+  document.getElementById('addModal').classList.add('open');
+  setTimeout(() => document.getElementById('nodeName').focus(), 100);
+}
+
+function editNode(id, e) {
+  if (e) e.stopPropagation();
+  const n = nodes.find(x => x.id === id); if (!n) return;
+  editingNodeId = id; pendingAvatar = n.avatar || null;
+  document.getElementById('modalTitle').textContent = 'Edit Node';
+  document.getElementById('nodeName').value = n.name;
+  document.getElementById('nodeTitle').value = n.title || '';
+  document.getElementById('nodeDept').value = n.dept || '';
+  document.getElementById('nodeEmail').value = n.email || '';
+  document.getElementById('nodeNotes').value = n.notes || '';
+  document.getElementById('avatarPreview').innerHTML = n.avatar ? `<img src="${n.avatar}">` : '📷';
+  selectedColor = n.color || 'amber';
+  document.querySelectorAll('#colorPicker .color-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === selectedColor));
+  populateParentSelect(id, n.parent);
+  document.getElementById('addModal').classList.add('open');
+}
+
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); editingNodeId = null; pendingAvatar = null; }
+function pickColor(el) {
+  document.querySelectorAll('#colorPicker .color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active'); selectedColor = el.dataset.t;
+}
+
+function saveNode() {
+  const name = document.getElementById('nodeName').value.trim();
+  if (!name) { showToast('Name is required', '⚠️'); return; }
+  const title = document.getElementById('nodeTitle').value.trim();
+  const dept = document.getElementById('nodeDept').value.trim();
+  const email = document.getElementById('nodeEmail').value.trim();
+  const notes = document.getElementById('nodeNotes').value.trim();
+  const parent = document.getElementById('nodeParent').value || null;
+  pushHistory();
+  if (editingNodeId) {
+    const n = nodes.find(x => x.id === editingNodeId);
+    if (n) Object.assign(n, { name, title, dept, email, notes, parent, color: selectedColor, avatar: pendingAvatar });
+  } else {
+    nodes.push({ id: 'n' + (idCounter++), name, title, dept, email, notes, parent, color: selectedColor, avatar: pendingAvatar });
+  }
+  closeAddModal(); render(); updateStats();
+  showToast(editingNodeId ? 'Node updated' : 'Node added', '✓');
+}
+
+function populateParentSelect(excludeId, selectedId) {
+  const sel = document.getElementById('nodeParent');
+  sel.innerHTML = '<option value="">— Root (top level) —</option>';
+  nodes.forEach(n => {
+    if (n.id === excludeId) return;
+    const o = document.createElement('option');
+    o.value = n.id; o.textContent = n.name + (n.title ? ' — ' + n.title : '');
+    if (n.id === selectedId) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function addChildTo(parentId, e) { if (e) e.stopPropagation(); openAddModal(parentId); }
+
+function handleAvatarUpload(e) {
+  const f = e.target.files[0]; if (!f) return;
+  if (f.size > 1.3e6) { showToast('Image too large (max 1 MB)', '⚠️'); return; }
+  const r = new FileReader();
+  r.onload = ev => {
+    pendingAvatar = ev.target.result;
+    document.getElementById('avatarPreview').innerHTML = `<img src="${pendingAvatar}">`;
+  };
+  r.readAsDataURL(f);
+}
+
+// ============================================================
+// DELETE & CONFIRM
+// ============================================================
+function confirmDelete(id, e) {
+  if (e) e.stopPropagation();
+  const n = nodes.find(x => x.id === id); if (!n) return;
+  const dc = getDescendantCount(id);
+  showConfirm('🗑️', 'Delete Node', `Delete <b>${esc(n.name)}</b>${dc ? ` and <b>${dc}</b> sub-node${dc > 1 ? 's' : ''}` : ''} permanently?`, () => deleteNode(id), 'Delete');
+}
+
+function deleteNode(id) {
+  pushHistory();
+  function getAllDesc(nid) { return [nid, ...nodes.filter(n => n.parent === nid).flatMap(k => getAllDesc(k.id))]; }
+  const toRemove = new Set(getAllDesc(id));
+  nodes = nodes.filter(n => !toRemove.has(n.id));
+  if (selectedNodeId && toRemove.has(selectedNodeId)) {
+    selectedNodeId = null;
+    document.getElementById('editPanel').innerHTML = '<p style="font-size:11px;color:var(--text2);">Click any node to edit.</p>';
+  }
+  render(); updateStats(); showToast('Deleted', '🗑️');
+}
+
+function confirmClearAll() {
+  if (!nodes.length) return;
+  showConfirm('⚠️', 'Clear All', `Delete all <b>${nodes.length}</b> nodes and start fresh?`, () => {
+    pushHistory(); nodes = []; selectedNodeId = null;
+    document.getElementById('editPanel').innerHTML = '<p style="font-size:11px;color:var(--text2);">Click any node to edit.</p>';
+    render(); updateStats();
+    showToast('Chart cleared', '🗑️');
+  }, 'Clear All');
+}
+
+function showConfirm(icon, title, msg, cb, okLabel = 'Confirm') {
+  document.getElementById('confirmIcon').textContent = icon;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').innerHTML = msg;
+  document.getElementById('confirmOkBtn').textContent = okLabel;
+  confirmCallback = cb;
+  document.getElementById('confirmModal').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('open'); confirmCallback = null; }
+function executeConfirm() { closeConfirm(); if (confirmCallback) confirmCallback(); }
+
+// ============================================================
+// QUICK ADD
+// ============================================================
+const qTemplates = {
+  ceo:      { name: 'CEO Name',      title: 'Chief Executive Officer', dept: 'Executive',  color: 'amber' },
+  manager:  { name: 'Manager Name',  title: 'Department Manager',      dept: 'Management', color: 'blue'  },
+  employee: { name: 'Employee Name', title: 'Team Member',             dept: 'Operations', color: 'green' },
+  team:     { name: 'Dept Head',     title: 'Department Head',         dept: 'Division',   color: 'purple'},
+  designer: { name: 'Designer Name', title: 'UI/UX Designer',          dept: 'Design',     color: 'teal'  },
+  intern:   { name: 'Intern Name',   title: 'Intern',                  dept: 'Operations', color: 'red'   },
+};
+function quickAdd(type) {
+  const t = qTemplates[type]; pushHistory();
+  nodes.push({ id: 'n' + (idCounter++), ...t, parent: selectedNodeId || null, avatar: null, email: '', notes: '' });
+  render(); updateStats(); showToast(type.charAt(0).toUpperCase() + type.slice(1) + ' added', '✓');
+}
+
+// ============================================================
+// SAVE / LOAD JSON
+// ============================================================
+function saveJSON() {
+  if (!nodes.length) { showToast('Nothing to save', '⚠️'); return; }
+  const payload = JSON.stringify({
+    nodes, idCounter, layoutMode, curvedLines, nodeSize, connectorColor,
+    chartTitle: document.getElementById('chartTitle').value,
+    chartDesc: document.getElementById('chartDesc').value
+  }, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  a.download = 'orgchart.json'; a.click();
+  showToast('Saved!', '💾');
+}
+function triggerLoad() { document.getElementById('loadFile').click(); }
+function loadJSON(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (!Array.isArray(d.nodes)) throw new Error();
+      nodes = d.nodes; idCounter = d.idCounter || nodes.length + 1;
+      if (d.layoutMode) { layoutMode = d.layoutMode; document.getElementById('layoutLabel').textContent = layoutMode === 'vertical' ? 'Vertical' : 'Horizontal'; }
+      if (typeof d.curvedLines !== 'undefined') { curvedLines = d.curvedLines; document.getElementById('curveLabel').textContent = curvedLines ? 'Curved' : 'Straight'; }
+      if (d.nodeSize) { nodeSize = d.nodeSize; initSizeBtns(); }
+      if (d.connectorColor) {
+        connectorColor = d.connectorColor;
+        document.querySelectorAll('.conn-swatch').forEach(s => s.classList.toggle('active', s.dataset.color === connectorColor));
+      }
+      if (d.chartTitle) document.getElementById('chartTitle').value = d.chartTitle;
+      if (d.chartDesc) document.getElementById('chartDesc').value = d.chartDesc;
+      pushHistory(); selectedNodeId = null; render(); updateStats();
+      showToast('Chart loaded!', '📂');
+    } catch { showToast('Invalid JSON file', '⚠️'); }
+  };
+  r.readAsText(f); e.target.value = '';
+}
+
+// ============================================================
+// CSV IMPORT
+// ============================================================
+function openCSVModal() {
+  document.getElementById('csvTextarea').value = '';
+  document.getElementById('csvPreview').innerHTML = '';
+  document.getElementById('csvModal').classList.add('open');
+}
+function closeCSVModal() { document.getElementById('csvModal').classList.remove('open'); }
+
+function handleCSVFile(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById('csvTextarea').value = ev.target.result; previewCSV(); };
+  r.readAsText(f); e.target.value = '';
+}
+
+function previewCSV() {
+  const txt = document.getElementById('csvTextarea').value.trim();
+  const wrap = document.getElementById('csvPreview');
+  if (!txt) { wrap.innerHTML = ''; return; }
+  const rows = txt.split('\n').map(r => r.split(',').map(c => c.trim()));
+  if (rows.length < 2) { wrap.innerHTML = ''; return; }
+  const headers = rows[0], preview = rows.slice(1, 6);
+  wrap.innerHTML = `<div class="csv-preview-wrap"><table>
+    <thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${preview.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div><p style="font-size:10.5px;color:var(--text3);margin-top:5px;">${rows.length - 1} row(s) detected</p>`;
+}
+
+function importCSV() {
+  const txt = document.getElementById('csvTextarea').value.trim();
+  if (!txt) { showToast('No CSV data', '⚠️'); return; }
+  const rows = txt.split('\n').map(r => r.split(',').map(c => c.trim()));
+  if (rows.length < 2) { showToast('Need header row + data rows', '⚠️'); return; }
+  const hdrs = rows[0].map(h => h.toLowerCase());
+  const gi = k => hdrs.indexOf(k);
+  const iName = gi('name'), iTitle = gi('title'), iDept = gi('department') >= 0 ? gi('department') : gi('dept');
+  const iEmail = gi('email'), iParent = gi('parent'), iColor = gi('color');
+  if (iName < 0) { showToast('CSV must have a "name" column', '⚠️'); return; }
+
+  pushHistory();
+  const nameToId = {};
+  const imported = rows.slice(1).filter(r => r[iName]).map(r => {
+    const id = 'n' + (idCounter++), name = r[iName] || '';
+    nameToId[name] = id;
+    return {
+      id, name,
+      title: iTitle >= 0 ? r[iTitle] || '' : '',
+      dept: iDept >= 0 ? r[iDept] || '' : '',
+      email: iEmail >= 0 ? r[iEmail] || '' : '',
+      parent: null,
+      color: (iColor >= 0 && r[iColor]) ? r[iColor] : 'amber',
+      avatar: null, notes: '',
+      _parentName: iParent >= 0 ? r[iParent] || '' : ''
+    };
+  });
+  imported.forEach(n => {
+    if (n._parentName && nameToId[n._parentName]) n.parent = nameToId[n._parentName];
+    delete n._parentName;
+  });
+  nodes = [...nodes, ...imported];
+  closeCSVModal(); render(); updateStats();
+  showToast(`Imported ${imported.length} nodes`, '📋');
+}
+
+// ============================================================
+// SHARE VIA URL
+// ============================================================
+function openShareModal() {
+  document.getElementById('shareModal').classList.add('open');
+  const payload = JSON.stringify({
+    nodes: nodes.map(n => ({ ...n, avatar: null })), // strip avatars to keep URL compact
+    idCounter, layoutMode, curvedLines, nodeSize, connectorColor,
+    chartTitle: document.getElementById('chartTitle').value,
+    chartDesc: document.getElementById('chartDesc').value
+  });
+  try {
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+    const url = window.location.origin + window.location.pathname + '?chart=' + encoded;
+    document.getElementById('shareUrlInput').value = url;
+  } catch {
+    document.getElementById('shareUrlInput').value = 'Chart is too large to encode as URL. Use Save/Load JSON instead.';
+  }
+}
+function closeShareModal() { document.getElementById('shareModal').classList.remove('open'); }
+function copyShareLink() {
+  const input = document.getElementById('shareUrlInput');
+  input.select(); input.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); showToast('Link copied!', '🔗'); }
+  catch { navigator.clipboard.writeText(input.value).then(() => showToast('Link copied!', '🔗')); }
+}
+
+function tryLoadFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const encoded = params.get('chart');
+  if (!encoded) return false;
+  try {
+    const d = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    if (!Array.isArray(d.nodes)) return false;
+    nodes = d.nodes; idCounter = d.idCounter || nodes.length + 1;
+    if (d.layoutMode) { layoutMode = d.layoutMode; document.getElementById('layoutLabel').textContent = layoutMode === 'vertical' ? 'Vertical' : 'Horizontal'; }
+    if (typeof d.curvedLines !== 'undefined') { curvedLines = d.curvedLines; document.getElementById('curveLabel').textContent = curvedLines ? 'Curved' : 'Straight'; }
+    if (d.nodeSize) { nodeSize = d.nodeSize; }
+    if (d.connectorColor) { connectorColor = d.connectorColor; }
+    if (d.chartTitle) document.getElementById('chartTitle').value = d.chartTitle;
+    if (d.chartDesc) document.getElementById('chartDesc').value = d.chartDesc;
+    return true;
+  } catch { return false; }
+}
+
+// ============================================================
+// PRINT
+// ============================================================
+function printChart() {
+  const p = scale; scale = 1;
+  document.getElementById('orgChart').style.transform = 'scale(1)';
+  window.print();
+  scale = p; applyZoom();
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+// ============================================================
+// EXPORT
+// ============================================================
+function toggleExport() { exportOpen = !exportOpen; document.getElementById('exportPanel').classList.toggle('open', exportOpen); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-wrap')) { exportOpen = false; document.getElementById('exportPanel').classList.remove('open'); }
+});
+
+async function exportAs(type) {
+  document.getElementById('exportPanel').classList.remove('open'); exportOpen = false;
+  if (!nodes.length) { showToast('Nothing to export', '⚠️'); return; }
+  showToast('Exporting…', '⏳');
+  const chartEl = document.getElementById('orgChart');
+  const prevTransform = chartEl.style.transform;
+  chartEl.style.transform = 'scale(1)';
+  await new Promise(r => setTimeout(r, 100));
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const bg = isDark ? '#0d0f14' : '#f0f2f8';
+  if (type === 'png') {
+    const c = await html2canvas(chartEl, { backgroundColor: bg, scale: 2.4, useCORS: true, logging: false });
+    const a = document.createElement('a'); a.download = 'orgchart.png'; a.href = c.toDataURL('image/png'); a.click();
+    showToast('PNG exported!', '🖼️');
+  } else if (type === 'pdf') {
+    const c = await html2canvas(chartEl, { backgroundColor: bg, scale: 2.4, useCORS: true, logging: false });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: c.width > c.height ? 'landscape' : 'portrait', unit: 'px', format: [c.width / 2, c.height / 2] });
+    pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, c.width / 2, c.height / 2);
+    pdf.save('orgchart.pdf');
+    showToast('PDF exported!', '📄');
+  } else if (type === 'svg') {
+    const blob = new Blob([buildSVG()], { type: 'image/svg+xml' });
+    const a = document.createElement('a'); a.download = 'orgchart.svg'; a.href = URL.createObjectURL(blob); a.click();
+    showToast('SVG exported!', '📐');
+  }
+  chartEl.style.transform = prevTransform;
+}
+
+function buildSVG() {
+  const cm = { amber:'#e8b86d', blue:'#6d9ee8', green:'#8de8b8', red:'#e86d6d', purple:'#b46de8', teal:'#6ddce8' };
+  const CW = 190, CH = 90, GX = 55, GY = 70;
+  const pos = {};
+  function lay(id, x, y) {
+    const kids = nodes.filter(n => n.parent === id); pos[id] = { x, y };
+    if (!kids.length) return CW;
+    let tw = kids.length * (CW + GX) - GX, cx = x + CW / 2 - tw / 2;
+    kids.forEach(k => { lay(k.id, cx, y + CH + GY); cx += CW + GX; });
+    return Math.max(CW, tw);
+  }
+  let ox = 40; nodes.filter(n => !n.parent).forEach(r => { lay(r.id, ox, 40); ox += CW + GX * 4; });
+  const xs = Object.values(pos).map(p => p.x), ys = Object.values(pos).map(p => p.y);
+  if (!xs.length) return '<svg xmlns="http://www.w3.org/2000/svg"><text x="10" y="20" fill="#888">Empty</text></svg>';
+  const W = Math.max(...xs) + CW + 60, H = Math.max(...ys) + CH + 70;
+  const chartTitle = document.getElementById('chartTitle').value;
+  let lines = '', cards = '';
+  nodes.forEach(n => {
+    if (!n.parent || !pos[n.id] || !pos[n.parent]) return;
+    const { x: cx, y: cy } = pos[n.id], { x: px, y: py } = pos[n.parent];
+    if (curvedLines) {
+      const mx1 = px + CW / 2, my1 = py + CH, mx2 = cx + CW / 2, my2 = cy, midy = (my1 + my2) / 2;
+      lines += `<path d="M${mx1},${my1} C${mx1},${midy} ${mx2},${midy} ${mx2},${my2}" stroke="${connectorColor}" stroke-width="1.8" fill="none"/>`;
+    } else {
+      lines += `<line x1="${px+CW/2}" y1="${py+CH}" x2="${cx+CW/2}" y2="${cy}" stroke="${connectorColor}" stroke-width="1.8"/>`;
+    }
+  });
+  nodes.forEach(n => {
+    if (!pos[n.id]) return;
+    const { x, y } = pos[n.id], col = cm[n.color] || cm.amber;
+    const ini = n.name.split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+    cards += `<rect x="${x}" y="${y}" width="${CW}" height="${CH}" rx="10" fill="#161a24" stroke="#2a3048" stroke-width="1.5"/>
+<rect x="${x}" y="${y}" width="${CW}" height="3" rx="2" fill="${col}"/>
+<circle cx="${x+26}" cy="${y+26}" r="14" fill="${col}22"/>
+<text x="${x+26}" y="${y+31}" text-anchor="middle" fill="${col}" font-family="serif" font-size="12" font-weight="bold">${esc(ini)}</text>
+<text x="${x+46}" y="${y+21}" fill="#eef0f6" font-family="sans-serif" font-size="11.5" font-weight="600">${esc(n.name.slice(0,22))}</text>
+${n.title ? `<text x="${x+46}" y="${y+35}" fill="#8a93b0" font-family="sans-serif" font-size="9.5">${esc(n.title.slice(0,26))}</text>` : ''}
+${n.dept ? `<rect x="${x+46}" y="${y+43}" width="${Math.min(n.dept.length*6+10,110)}" height="14" rx="7" fill="${col}22"/><text x="${x+51}" y="${y+53.5}" fill="${col}" font-family="sans-serif" font-size="8.5" font-weight="700">${esc(n.dept.slice(0,16))}</text>` : ''}`;
+  });
+  const titleBlock = chartTitle ? `<text x="14" y="26" fill="#e8b86d" font-family="serif" font-size="16" font-weight="bold">${esc(chartTitle)}</text>` : '';
+  const titleOffset = chartTitle ? 36 : 0;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H + titleOffset}" viewBox="0 0 ${W} ${H + titleOffset}">
+<rect width="100%" height="100%" fill="#0d0f14"/>
+${titleBlock}
+<g transform="translate(0,${titleOffset})">${lines}${cards}</g>
+<text x="14" y="${H + titleOffset - 9}" font-family="sans-serif" font-size="9" fill="#3a4060">OrgFlow Pro</text>
+</svg>`;
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer;
+function showToast(msg, icon = '✓') {
+  clearTimeout(toastTimer);
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = icon;
+  const t = document.getElementById('toast');
+  t.classList.remove('show');
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveJSON(); }
+  if (e.key === 'Escape') {
+    closeAddModal(); closeConfirm(); clearMultiSel();
+    document.getElementById('bulkMoveModal').classList.remove('open');
+    document.getElementById('csvModal').classList.remove('open');
+    document.getElementById('shareModal').classList.remove('open');
+  }
+  if (e.key === 'Delete' && selectedNodeId && !multiSelected.size) confirmDelete(selectedNodeId);
+  if (e.key === 'Delete' && multiSelected.size > 0) bulkDelete();
+  if (e.key === '+' || e.key === '=') zoom(.1);
+  if (e.key === '-') zoom(-.1);
+  if (e.key === '0') resetZoom();
+  if (e.key.toLowerCase() === 'f') fitToScreen();
+  if (e.key.toLowerCase() === 'n') openAddModal();
+});
+
+// ============================================================
+// INIT SAMPLE
+// ============================================================
+function initSample() {
+  nodes = [
+    { id:'n1', name:'Alex Morgan',   title:'Chief Executive Officer', dept:'Executive',   parent:null,  color:'amber',  email:'alex@company.com',   avatar:null, notes:'Founder and CEO since 2018.' },
+    { id:'n2', name:'Jordan Lee',    title:'VP of Engineering',        dept:'Engineering', parent:'n1',  color:'blue',   email:'jordan@company.com', avatar:null, notes:'' },
+    { id:'n3', name:'Taylor Kim',    title:'VP of Marketing',          dept:'Marketing',   parent:'n1',  color:'green',  email:'taylor@company.com', avatar:null, notes:'' },
+    { id:'n4', name:'Casey Wu',      title:'Lead Engineer',            dept:'Engineering', parent:'n2',  color:'blue',   email:'', avatar:null, notes:'' },
+    { id:'n5', name:'Riley Park',    title:'Senior Engineer',          dept:'Engineering', parent:'n2',  color:'blue',   email:'', avatar:null, notes:'' },
+    { id:'n6', name:'Drew Patel',    title:'Marketing Lead',           dept:'Marketing',   parent:'n3',  color:'green',  email:'', avatar:null, notes:'' },
+    { id:'n7', name:'Sam Rivera',    title:'UI/UX Designer',           dept:'Design',      parent:'n3',  color:'teal',   email:'', avatar:null, notes:'' },
+    { id:'n8', name:'Morgan Blake',  title:'Junior Engineer',          dept:'Engineering', parent:'n4',  color:'purple', email:'', avatar:null, notes:'' },
+  ];
+  idCounter = 9;
+  document.getElementById('chartTitle').value = 'Acme Corp Organization Chart';
+  document.getElementById('chartDesc').value = 'Q1 2025 — Updated March';
+  pushHistory(); render(); updateStats();
+}
+
+// ---- BOOT ----
+const savedTheme = localStorage.getItem('of_theme');
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+initSizeBtns();
+
+const loadedFromURL = tryLoadFromURL();
+if (loadedFromURL) {
+  pushHistory(); initSizeBtns(); render(); updateStats();
+  showToast('Chart loaded from link', '🔗');
+} else {
+  initSample();
+}
+</script>
+</body>
+</html>
